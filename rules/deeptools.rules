@@ -1,0 +1,12 @@
+import os
+
+rule bam_coverage:
+    input:
+        'alignments/{sample}/{sample}.all.bam'
+    output:
+        'bigwigs/{sample}/coverage.bw'
+    params: **config.get('bam_coverage')
+    log: 'logs/bamcoverage_{sample}.log'
+    shell:
+        'bamCoverage {params.options} -b {input} -o {output}'
+

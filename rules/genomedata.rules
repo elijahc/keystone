@@ -1,0 +1,36 @@
+import glob
+from os.path import splitext
+from os.path import basename
+from string import Template
+
+def _bedgraphs(wildcards):
+    s = Template('analysis/$paradigm/bedgraphs/$sample/$sample.50frac.*.bg.gz')
+    files = glob.glob(s.substitute(**wildcards))
+    #if not files:
+        #raise Exception('genomedata string template returned no files')
+    return files   
+
+def _trackspec(wildcards):
+    files = _bedgraphs(wildcards)
+    tracks = ["-t {name}={file_path}".format(name=basename( file ).split('.bg.gz')[0], file_path=file) for file in files]
+    trackspec = ' '.join(tracks)
+    #print('Trackspec:')
+    #print(trackspec)
+    return trackspec
+
+dyads=['0-1', '1-2', '2-0']
+FRAMES=['0', '1', '2']
+def _hacky_bedgraphs(wildcards):
+        return expand("analysis/{paradigm}/bedgraphs/{sample}/{sample}.50frac.{frame}.bg.gz", frame=FRAMES, **wildcards)
+
+rule genomedata_load_exome:
+    input: _hacky_bedgraphs
+    output:
+        'analysis/{paradigm}/genomedata/{sample}.genomedata',
+    params:
+        job_name="genome_data_load_{sample}",
+        genome="/vol3/home/elijah/ref/genomes/sacCer1_ext_exons/sacCer1_ext_exons.fa",
+        trackspec=_trackspec,
+    log: "logs/genome_data_load_{sample}.log"
+    shell:
+        'genomedata-load --verbose --file-mode {params.trackspec} -s {params.genome} {output}'

@@ -1,0 +1,134 @@
+# coding: utf-8
+
+import os
+
+default_config = {
+    'segway_train_file_mode' : {
+        'tracks_from'   : "--tracks-from=analysis/{paradigm}/{sample}.tracks.txt",
+        'queue'         : '--cluster-opt="-q short"'
+    },
+
+    'segway_train_dir_mode' : {
+        'tracks_from'   : "--tracks-from=analysis/{paradigm}/{sample}.tracks.txt",
+        'queue'         : '--cluster-opt="-q short"'
+    },
+    'segway_identify_file_mode' : {
+        'queue'         : '--cluster-opt="-q short"'
+    },
+    'segway_identify_dir_mode' : {
+        'queue'         : '--cluster-opt="-q short"'
+    },
+    'segway_layer' : {}
+}
+
+for default_key, default_vals in default_config.items():
+    if default_key in config:
+        config[default_key].update(default_vals)
+    else:
+        config[default_key] = default_vals
+
+localrules: segway_train_file_mode, segway_train_dir_mode, segway_identify_dir_mode, segway_identify_file_mode
+
+# Segway Rules
+rule segway_train_file_mode:
+    input:
+        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata',
+        tracks='analysis/{paradigm}/{sample}.tracks.txt'
+    output:
+        params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+        dir='analysis/{paradigm}/segway/{sample}.train/'
+    params: **config['segway_train_file_mode']
+    log: 'logs/segway_train_{sample}.log'
+    shell:
+        'segway {params} train {input.genomedata} {output.dir}'
+
+rule segway_train_dir_mode:
+    input:
+        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata/',
+        tracks='analysis/{paradigm}/{sample}.tracks.txt'
+    output:
+        params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+        dir='analysis/{paradigm}/segway/{sample}.train/'
+    params: **config['segway_train_dir_mode']
+    log: 'logs/segway_train_{sample}.log'
+    shell:
+        'segway {params} train {input.genomedata} {output.dir}'
+ruleorder: segway_train_dir_mode > segway_train_file_mode
+
+rule segway_identify_dir_mode:
+    input:
+        train_params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+        train_dir='analysis/{paradigm}/segway/{sample}.train/',
+        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata/',
+    output:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz',
+        dir='analysis/{paradigm}/segway/{sample}.identify/',
+    params: **config['segway_identify_dir_mode']
+    log: 'logs/segway_identify_{sample}.log'
+    shell:
+        'segway {params} identify {input.genomedata} {input.train_dir} {output.dir}'
+
+rule segway_identify_file_mode:
+    input:
+        train_params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+        train_dir='analysis/{paradigm}/segway/{sample}.train/',
+        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata',
+    output:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz',
+        dir='analysis/{paradigm}/segway/{sample}.identify/',
+    params: **config['segway_identify_file_mode']
+    log: 'logs/segway_identify_{sample}.log'
+    shell:
+        'segway {params} identify {input.genomedata} {input.train_dir} {output.dir}'
+
+rule segway_layer:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz'
+    output:
+        bigbedfile='analysis/{paradigm}/segway/{sample}.identify/segway.layered.bb',
+        layeredbedfile='analysis/{paradigm}/segway/{sample}.identify/segway.layered.bed.gz'
+    params: **config['segway_layer']
+    log: 'logs/segway_layer_{sample}.log'
+    shell:
+        'segway-layer --bigBed={output.bigbedfile} {input} {output.layeredbedfile}'
+
+# Reverse World rulesets
+rule segway_identify_reverse_world:
+    input:
+        train_params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+        train_dir='analysis/{paradigm}/segway/{sample}.train/',
+        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata/',
+    output:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.0.bed.gz',
+        'analysis/{paradigm}/segway/{sample}.identify/segway.1.bed.gz',
+        dir='analysis/{paradigm}/segway/{sample}.identify/',
+    params: **config['segway_identify']
+    log: 'logs/segway_identify_{sample}.log'
+    shell:
+        'segway {params} identify {input.genomedata} {input.train_dir} {output.dir}'
+
+rule segway_layer_reverse_world:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.bed.gz'
+    output:
+        bigbedfile='analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.layered.bb',
+        layeredbedfile='analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.layered.bed.gz'
+    params: **config['segway_layer']
+    log: 'logs/segway_layer_{sample}.log'
+    shell:
+        'segway-layer --bigBed={output.bigbedfile} {input} {output.layeredbedfile}'
+
+#rule segway_train_recover:
+#    input:
+#        traindir='analysis/{paradigm}/segway/{sample}.train/',
+#        genomedata='analysis/{paradigm}/genomedata/{sample}.genomedata/',
+#        tracks='analysis/{paradigm}/genomedata/{sample}.tracks.txt'
+#    output:
+#        params='analysis/{paradigm}/segway/{sample}.train/params/params.params',
+#    params: **config['segway_train']
+#    log: 'logs/segway_train_{sample}.log'
+#    shell:
+#        'segway {params} train {input.genomedata} {input.traindir}'
+
+#ruleorder: segway_train_recover > segway_train
+

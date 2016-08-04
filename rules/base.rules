@@ -1,0 +1,6 @@
+#-*- snakemake -*-
+# Base rules
+from pprint import pprint as pp
+
+#def _rules_path():
+#    return '/vol3/home/elijah/dev/rotations/frameshifting/pipeline/rules'

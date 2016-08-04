@@ -1,0 +1,7 @@
+rule decompress_bedgraph_file_same_dir:
+    input:  '{prefix}/{file}.bg.gz'
+    output: temp('{prefix}/{file}.bg')
+    log: 'logs/decompress_bedgraph_{file}'
+    run: 
+        shell('gzip -c -d {input} > {output}')
+        shell('bedSort {output} {output}')

@@ -1,0 +1,150 @@
+import os
+
+# Genome_cov
+rule genomecov:
+    input:
+        'alignments/{sample}/{sample}.all.bam'
+    output:
+        'bedgraphs/{sample}/all.bg.gz'
+    params: **config.get('genomecov')
+    log: 'logs/genomecov_{sample}.log'
+    shell:
+        'bedtools genomecov {params.options} -ibam {input} -g {params.chrom_sizes} | gzip -c > {output}'
+
+rule pos_strand_genomecov:
+    input:
+        'alignments/{sample}/{sample}.all.bam'
+    output:
+        'bedgraphs/{sample}/all.pos.bg.gz',
+    params:
+        genome_sizes='/vol3/home/elijah/ref/genomes/sacCer1/sacCer1.chrom.sizes',
+        job_name='{sample}.pos_stranded_genomecov_by_frame'
+    log: 'logs/pos_stranded_genomecov.log'
+    shell:
+        'bedtools genomecov -strand + -bg -5 -ibam {input} -g {params.genome_sizes} | gzip -c > {output}'
+
+rule neg_strand_genomecov:
+    input:
+        'alignments/{sample}/{sample}.all.bam'
+    output:
+        'bedgraphs/{sample}/all.neg.bg.gz'
+    params:
+        genome_sizes='/vol3/home/elijah/ref/genomes/sacCer1/sacCer1.chrom.sizes',
+        job_name='{sample}.neg_stranded_genomecov'
+    log: 'logs/neg_stranded_genomecov_by_frame.log'
+    shell:
+        'bedtools genomecov -strand - -bg -5 -ibam {input} -g {params.genome_sizes} | gzip -c > {output}'
+
+# Intersection
+rule coverage_by_frame:
+    input:
+        signal='bedgraphs/{sample}/all.bg.gz',
+        frame_map='/vol3/home/elijah/ref/genomes/sacCer1_ext_exons/bedgraphs/frame_map.{frame}.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame,\d}.bg.gz',
+    params:
+    log: 'logs/coverage_in_frame_{frame}_{sample}.log'
+    shell:
+        'bedtools intersect -a {input.signal} -b {input.frame_map} -wa -u | gzip -c > {output}'
+
+rule windowed_coverage_by_frame:
+    input:
+        signal='analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame}.bg.gz',
+        window_map='/vol3/home/elijah/ref/genomes/sacCer1_ext_exons/sacCer1_ext_exons_win-50.bed',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.{frame}.bg',
+    params:
+    log: 'logs/windowed_coverage_in_frame_{frame}_{sample}.log'
+    run:
+        shell('bedtools map -a {input.window_map} -b {input.signal} -c 4 -o sum | \
+            awk \'$4 != "." {{print $0;}}\' > {output}')
+        shell('bedSort {output} {output}')
+
+rule aggregated_windowed_coverage_by_frame:
+    input:
+        win0='analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.0.bg',
+        win1='analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.1.bg',
+        win2='analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.2.bg',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.all.bg.gz'
+    params:
+    log: 'logs/aggregated_windowed_coverage_in_{sample}.log'
+    shell:
+        'bedtools unionbedg -i {input} | gzip -c > {output}'
+
+
+rule fractional_coverage_frame_2:
+    input:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.all.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50frac.2.bg.gz'
+    params:
+    log: 'logs/fractional_windowed_coverage_in_{sample}.log'
+    shell:
+        'zcat {input} | awk \'BEGIN{{OFS="\\t";}} {{print $1,$2,$3,$6/($4+$5+$6);}}\' | gzip -c > {output}'
+
+rule fractional_coverage_frame_1:
+    input:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.all.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50frac.1.bg.gz'
+    params:
+    log: 'logs/fractional_windowed_coverage_in_{sample}.log'
+    shell:
+        'zcat {input} | awk \'BEGIN{{OFS="\\t";}} {{print $1,$2,$3,$5/($4+$5+$6);}}\' | gzip -c > {output}'
+
+rule fractional_coverage_frame_0:
+    input:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50ct.all.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.50frac.0.bg.gz'
+    params:
+    log: 'logs/fractional_windowed_coverage_in_{sample}.log'
+    shell:
+        'zcat {input} | awk \'BEGIN{{OFS="\\t";}} {{print $1,$2,$3,$4/($4+$5+$6);}}\' | gzip -c > {output}'
+
+rule neg_strand_coverage_by_frame:
+    input:
+        signal='bedgraphs/{sample}/all.neg.bg.gz',
+        frame_map='/vol3/home/elijah/ref/genomes/sacCer1/bedgraphs/2ORF_frame_map.{frame}.neg.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame}.neg.bg.gz',
+    params:
+        job_name='{sample}.neg_stranded_coverage_by_frame'
+    log: 'logs/neg_stranded_coverage_in_frame_{frame}_{sample}.log'
+    shell:
+        'bedtools intersect -a {input.signal} -b {input.frame_map} -u | gzip -c > {output}'
+
+rule pos_strand_coverage_by_frame:
+    input:
+        signal='bedgraphs/{sample}/all.pos.bg.gz',
+        frame_map='/vol3/home/elijah/ref/genomes/sacCer1/bedgraphs/2ORF_frame_map.{frame}.pos.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame}.pos.bg.gz',
+    params:
+    log: 'logs/pos_stranded_coverage_in_frame_{frame}_{sample}.log'
+    shell:
+        'bedtools intersect -a {input.signal} -b {input.frame_map} -u | gzip -c > {output}'
+
+# Union bedgraph
+rule frame_dyad_coverage:
+    input:
+        frame1='analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame1}.bg.gz',
+        frame2='analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame2}.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame1}-{frame2}.bg.gz',
+    params:
+    log: 'logs/frame_dyad_coverage_{sample}_{frame1}-{frame2}.log'
+    shell:
+        'bedtools unionbedg -i {input} | awk \'{{OFS="\t"}} {{print $1,$2,$3,$4+$5}}\' | awk \'!seen[$0]++\' | gzip -c > {output}'
+
+rule stranded_frame_dyad_coverage:
+    input:
+        frame1='analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame1}.{strand}.bg.gz',
+        frame2='analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame2}.{strand}.bg.gz',
+    output:
+        'analysis/{paradigm}/bedgraphs/{sample}/{sample}.{frame1}-{frame2}.{strand}.bg.gz',
+    params:
+    log: 'logs/frame_dyad_coverage_{sample}_{frame1}-{frame2}.log'
+    shell:
+        'bedtools unionbedg -i {input} | awk \'{{OFS="\t"}} {{print $1,$2,$3,$4+$5}}\' | awk \'!seen[$0]++\' | gzip -c > {output}'

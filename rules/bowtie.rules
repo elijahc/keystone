@@ -1,0 +1,27 @@
+from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
+FTP = FTPRemoteProvider()
+
+rule convert_sra:
+    params:
+        prefix='raw/',
+    input:
+        'raw/{sample}.sra'
+    output:
+        'raw/{sample}.fastq.gz'
+    shell:
+        'fastq-dump --gzip -O {params.prefix} {input}'
+
+# Alignment
+rule align_assembly:
+    input:
+        rules.convert_sra.output
+    output:
+        'alignments/{sample}/{sample}.all.bam'
+    params: **config['align_assembly']
+    threads: 8
+    log: 'logs/align.{sample}.log'
+    shell:
+        'bowtie2 {params.options} -p {threads} {params.ref_genome} -U {input} \
+        | samtools view -bhu -F 1548 - \
+        | samtools sort - -m 8G \
+        > {output} && samtools index {output}'

@@ -1,0 +1,27 @@
+import os
+
+ref_configs = config['ref']
+
+def _assembly(filepath):
+    return os.path.join(ref_configs['assembly_dir'],filepath)
+
+rule pos_slip_seqs:
+    input: _assembly('sacCer1_ext_exons.fa'),
+    output: _assembly('bedgraphs/slip_seqs.pos.bg.gz'),
+    log:    'logs/ref_slip_seqs.log'
+    run:
+        shell(  'python /vol3/home/elijah/dev/rotations/frameshifting/pipeline/scripts/genomeiden_combined.py {input} | \
+                    awk \'$6 == "+" {{ print $0}}\' | \
+                    gzip -c > {output}')
+
+rule ref_slip_seq_frame_0:
+    input:
+        signal=_assembly('bedgraphs/slip_seqs.{strand}.bg.gz'),
+        frame_map=_assembly('bedgraphs/frame_map.2.bg.gz'),
+    output:
+        _assembly('bedgraphs/slip_seqs.{strand}.0.bed'),
+    params:
+    log: 'logs/ref_slip_seq_{strand}_by_frame.0.log'
+    run:
+        shell(  'bedtools intersect -a {input.signal} -b {input.frame_map} -wa -u | \
+                    awk \'BEGIN{{OFS="\\t";}} {{print $1,$2,$2+7,$4,$5,$6;}}\' > {output}' )

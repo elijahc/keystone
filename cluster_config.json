@@ -1,0 +1,115 @@
+{
+    "__default__" : {
+        "job_name" : "default_name",
+        "requirements" : ""
+    },
+    "genomedata_load":
+    {
+        "job_name" : "genomedata_load"
+    },
+    "genomedata_load_exome":
+    {
+        "job_name" : "genomedata_load"
+    },
+    "trackspec":
+    {
+        "job_name" : "trackspec"
+    },
+    "decompress_bedgraph_file_same_dir":
+    {
+        "job_name" : "decompress_bedgraph_file_same_dir"
+    },
+    "coverage_by_frame":
+    {
+        "job_name" : "coverage_by_frame"
+    },
+    "frame_dyad_coverage":
+    {
+        "job_name" : "frame_dyad_coverage"
+    },
+    "bedgraph_to_bigwig":
+    {
+        "job_name" : "bedgraph_to_bigwig"
+    },
+    "all_bedgraph_to_bigwig":
+    {
+        "job_name" : "all_bedgraph_to_bigwig"
+    },
+    "convert_sra":
+    {
+        "job_name" : "convert_sra"
+    },
+    "align_assembly":
+    {
+        "job_name" : "align_assembly",
+        "requirements" : "-R 'select[mem<2000]'"
+    },
+    "bam_coverage":
+    {
+        "job_name" : "bam_coverage"
+    },
+    "pos_strand_genomecov":
+    {
+        "job_name" : "pos_strand_genomecov"
+    },
+    "pos_strand_coverage_by_frame":
+    {
+        "job_name" : "pos_strand_coverage_by_frame"
+    },
+    "neg_strand_genomecov":
+    {
+        "job_name" : "neg_strand_genomecov"
+    },
+    "neg_strand_coverage_by_frame":
+    {
+        "job_name" : "neg_strand_coverage_by_frame"
+    },
+    "segway_train_dir_mode":
+    {
+        "job_name" : "segway_train"
+    },
+    "segway_train_file_mode":
+    {
+        "job_name" : "segway_train"
+    },
+    "segway_identify_dir_mode":
+    {
+        "job_name" : "segway_identify"
+    },
+    "segway_identify_file_mode":
+    {
+        "job_name" : "segway_identify_file_mode"
+    },
+    "segway_layer":
+    {
+        "job_name" : "segway_layer"
+    },
+    "feature_aggregation":
+    {
+        "job_name" : "feature_aggregation"
+    },
+    "feature_aggregation_rv_world":
+    {
+        "job_name" : "feature_aggregation_rv_world"
+    },
+    "windowed_coverage_by_frame":
+    {
+        "job_name" : "windowed_coverage_by_frame"
+    },
+    "signal_distribution":
+    {
+        "job_name" : "signal_distribution"
+    },
+    "ascp_fetch":
+    {
+        "job_name" : "ascp_fetch"
+    },
+    "html_report":
+    {
+        "job_name" : "html_report"
+    },
+    "signal_distribution_rv_world":
+    {
+        "job_name" : "signal_distribution_rv_world"
+    }
+}

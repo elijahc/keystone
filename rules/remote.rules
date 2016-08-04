@@ -1,0 +1,34 @@
+import os
+from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
+FTP = FTPRemoteProvider()
+
+def afetch(wildcards):
+    sra_id=wildcards.sample
+    target='raw/'
+    options='-k 1 -T -l800m'
+    src="anonftp@ftp.ncbi.nlm.nih.gov:/sra/sra-instant/reads/ByRun/sra/%s/%s/%s/%s.sra" % (sra_id[:3], sra_id[:6],sra_id,sra_id)
+    cmd="ascp -i $ASPERA_DSA_KEY %s %s %s" % (options, src, target)
+    shell(cmd)
+
+# fetching SRA files
+rule ftp_fetch:
+    input:
+        FTP.remote('ftp-trace.ncbi.nih.gov/sra/sra-instant/reads/ByRun/sra/{type}/{prefix}/{sample}/{sample}.sra', keep_local=True)
+    log: 'logs/ftp_fetch_{sample}'
+    params: **config.get('ftp_fetch', {})
+    run:
+        shell("mv {input} raw/")
+
+rule ascp_fetch:
+    input: 'manifest.yaml'
+    output: 'raw/{sample}.sra'
+    log: 'logs/ascp_fetch_{sample}'
+    params:
+        sample='{sample}'
+    run:
+        sra_id=wildcards.sample
+        target='raw/'
+        options='-k 1 -T -l800m'
+        src="anonftp@ftp.ncbi.nlm.nih.gov:/sra/sra-instant/reads/ByRun/sra/%s/%s/%s/%s.sra" % (sra_id[:3], sra_id[:6],sra_id,sra_id)
+        cmd="ascp -i $ASPERA_DSA_KEY %s %s %s" % (options, src, target)
+        shell(cmd)

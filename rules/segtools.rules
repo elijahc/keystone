@@ -1,0 +1,126 @@
+default_config = {
+    'segtools_html_report' : {
+        'file' : '--outfile={sample}.html',
+        'clobber' : '--clobber',
+        'results_dir' : '--results-dir=analysis/{paradigm}/segtools/{sample}/',
+        'layered_bed_file' : '--layered-bed=analysis/{paradigm}/segway/{sample}.identify/segway.layered.bed.gz',
+        'layered_big_bed_file' : '--big-bed=analysis/{paradigm}/segway/{sample}.identify/segway.layered.bb'
+    },
+    'segtools_html_report_rv_world' : {
+        'results_dir' : '--results-dir=analysis/{paradigm}/segtools/{sample}.{strand}/',
+        'layered_bed_file' : '--layered-bed=analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.layered.bed.gz',
+        'layered_big_bed_file' : '--layered-bed=analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.layered.bb'
+    }
+}
+
+for key, val in default_config.items():
+    if key not in config:
+        config[key] = val
+
+# Segtools
+rule transition:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz'
+    output:
+        'analysis/{paradigm}/segtools/{sample}/transition/transition.png',
+        dir='analysis/{paradigm}/segtools/{sample}/transition/',
+    params:
+        paradigm="{paradigm}",
+        sample="{sample}",
+        plot="--dd --clobber",
+    log:
+        'logs/segtools_transition_{sample}.log'
+    run:
+        shell('segtools-transition {params.plot} --noplot --outdir={output.dir} {input}') 
+        shell('sed -i.bak \'s/nan/0\.0/g\' analysis/{params.paradigm}/segtools/{params.sample}/transition/transition.tab')
+        shell('segtools-transition {params.plot} --outdir={output.dir} {input}')
+
+rule signal_distribution:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz'
+    output:
+        'analysis/{paradigm}/segtools/{sample}/signal_distribution/signal_distribution.png',
+        dir='analysis/{paradigm}/segtools/{sample}/signal_distribution/',
+    params:
+        paradigm="{paradigm}",
+        sample="{sample}",
+        genomedatafile="analysis/{paradigm}/genomedata/{sample}.genomedata/",
+        order_plots="--replot --clobber"
+    log:
+        'logs/segtools_signal_distribution_{sample}.log'
+    shell:
+        'segtools-signal-distribution --noplot --outdir={output.dir} {input} {params.genomedatafile} && sed -i.bak s/nan/0/g analysis/{params.paradigm}/segtools/{params.sample}/signal_distribution/signal_distribution.tab && segtools-signal-distribution {params.order_plots} --outdir={output.dir} {input} {params.genomedatafile}'
+
+rule feature_aggregation:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz'
+    output:
+        'analysis/{paradigm}/segtools/{sample}/feature_aggregation/feature_aggregation.png',
+        dir='analysis/{paradigm}/segtools/{sample}/feature_aggregation/',
+    params: **config['feature_aggregation']
+    log:
+        'logs/segtools_aggregation_{sample}.log'
+    shell:
+        'segtools-aggregation --mode=region --flank-bases=500 --groups --normalize --outdir={output.dir} {input} {params.annotation}'
+
+rule html_report:
+    input:
+        rules.signal_distribution.output,
+        rules.feature_aggregation.output,
+        rules.transition.output,
+        #rules.length_distribution.output,
+        #rules.nucleotide_frequency.output,
+        segmentation="analysis/{paradigm}/segway/{sample}.identify/segway.bed.gz"
+    output:
+        'analysis/{paradigm}/../../{sample}_report.html'
+    params:
+        **config['segtools_html_report']
+    log:
+        'logs/html_report_{sample}.log'
+    shell:
+        'segtools-html-report {params} {input.segmentation}'
+
+rule feature_aggregation_rv_world:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.bed.gz'
+    output:
+        'analysis/{paradigm}/segtools/{sample}.{strand}/feature_aggregation/'
+    params:
+        annotation="/vol3/home/elijah/ref/genomes/sacCer1/sgdGene.sacCer1_plus_la.gtf",
+    log:
+        'logs/segtools_aggregation_{sample}.log'
+    shell:
+        'segtools-aggregation --mode=region --normalize --groups --outdir={output} {input} {params.annotation}'
+
+rule signal_distribution_rv_world:
+    input:
+        'analysis/{paradigm}/segway/{sample}.identify/segway.{strand}.bed.gz'
+    output:
+        'analysis/{paradigm}/segtools/{sample}.{strand}/signal_distribution/'
+    params:
+        paradigm="{paradigm}",
+        sample="{sample}",
+        strand="{strand}",
+        genomedatafile="analysis/{paradigm}/genomedata/{sample}.genomedata/",
+        order_plots="--replot --clobber --order-tracks=analysis/{paradigm}/segtools/{sample}.trackorder.txt"
+    log:
+        'logs/segtools_signal_distribution_{sample}.log'
+    shell:
+        'segtools-signal-distribution --noplot --outdir={output} {input} {params.genomedatafile} && sed -i.bak s/nan/0/g analysis/{params.paradigm}/segtools/{params.sample}/signal_distribution_{params.strand}/signal_distribution.tab && segtools-signal-distribution {params.order_plots} --outdir={output} {input} {params.genomedatafile}'
+
+rule html_report_rv_world:
+    params:
+        **config['segtools_html_report_rv_world']
+    input:
+        rules.signal_distribution_rv_world.output,
+        rules.feature_aggregation_rv_world.output,
+        segmentation='segway/{sample}.identify/segway.{strand}.bed.gz',
+        #rules.length_distribution.output,
+        #rules.nucleotide_frequency.output,
+        #rules.transition.output,
+    output:
+        'segtools/{sample}.{strand}/report.html'
+    log:
+        'logs/html_report_{sample}.log'
+    shell:
+        'segtools-html-report {params} {input.segmentation}'

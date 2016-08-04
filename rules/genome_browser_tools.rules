@@ -1,0 +1,27 @@
+import os
+
+rule all_bedgraph_to_bigwig:
+    input:  'bedgraphs/{sample}/{basename}.bg'
+    output: 'bigwigs/{sample}/{basename}.bw'
+    params: **config.get('all_bedgraph_to_bigwig',None)
+    log:    'logs/bedgraph_to_bigwig_{basename}.log'
+    run:  
+        shell('bedSort {input} {input}')
+        shell('bedGraphToBigWig {input} {params.chrom_sizes} {output}')
+
+rule bedgraph_to_bigwig:
+    input:  'analysis/{paradigm}/bedgraphs/{sample}/{basename}.bg'
+    output: 'analysis/{paradigm}/bigwigs/{sample}/{basename}.bw'
+    params: **config['bedgraph_to_bigwig']
+    log:    'logs/bedgraph_to_bigwig_{basename}.log'
+    run:  
+        shell('bedSort {input} {input}')
+        shell('bedGraphToBigWig {input} {params.chrom_sizes} {output}')
+
+rule bed_to_bigbed:
+    input: '{prefix}/{file}.bed'
+    output: '{prefix}/{file}.bb'
+    params: **config.get('bed_to_bigbed',{})
+    log:    'logs/bed_to_bigbed_{file}.log'
+    run:
+        shell('bedToBigBed {input} {params} {output}')
