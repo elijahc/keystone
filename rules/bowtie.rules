@@ -22,6 +22,6 @@ rule align_assembly:
     log: 'logs/align.{sample}.log'
     shell:
         'bowtie2 {params.options} -p {threads} {params.ref_genome} -U {input} \
-        | samtools view -bhu -F 1548 - \
+        | samtools view -huq 20 -F 1548 - \
         | samtools sort - -m 8G \
         > {output} && samtools index {output}'
